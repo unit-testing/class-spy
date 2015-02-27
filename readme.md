@@ -9,11 +9,13 @@ In some cases, you may want to mock a class's methods without using testing faci
 ## Usage ##
 In your phpunit test, you'll create a stub of your class under test. In that stub definition, add `use \UnitTesting\ClassSpy\WatchableTrait;`. Your stub will be extended with the following methods:
 
-* `protected trackMethodCall`: For any method you want to test on the stub, you can create (or override its parent) method by calling `return $this->trackMethodCall();` from within the method.
+* `trackMethodCall`: For any method you want to test on the stub, you can create (or override its parent) method by calling `return $this->trackMethodCall();` from within the method.
 * `getAllMethodCalls`: Returns an array of all the arguments passed to all tracked methods. The array has a list of method names as keys and an array of arguments passed to the method as the value.
-* `getMethodCall($method, $index = null)`: Pass the method name to get the arguments passed to it. Optionally add an index (where 1 = the first call) to get the arguments for a specific call if the method was called more than once. If the argument was never called, or was not called less times than the index provided, it will return null.
+* `getMethodCalls($method, $index = null)`: Pass the method name to get the arguments passed to it. Optionally add an index (where 1 = the first call) to get the arguments for a specific call if the method was called more than once. If the argument was never called, or was not called less times than the index provided, it will return null.
 * `getLastMethodCall($method)`: Get the last set of arguments for a particular method.
 * `setMethodResult($method, $result)`: Fake a specific result to be passed back from your tracked method. If the `$result` parameter is an instance `Closure`, the Closure will be executed with the actual parameters and its result will be returned.
+
+All of the above have their equivalents for static class methods: `trackStaticMethodCall`, `getAllStaticMethodCalls`, `getStaticMethodCalls`, `getLastStaticMethodCall`, `setStaticMethodResult`.
 
 ## Example ##
 ```
@@ -66,6 +68,26 @@ class WatchableTraitIntegrationTest extends \PHPUnit_Framework_TestCase {
 		$this->assertNull($instance->getMethodCalls('doSomethingThatIsNotTracked'));
 	}
 
+	function test_WatchableTraitOnStatic_TracksCalls()
+	{
+		// let's make some calls to this method
+		SomeTestClassStub::doSomethingStatic('foo');
+		SomeTestClassStub::doSomethingStatic();
+		SomeTestClassStub::doSomethingStatic('baz', 'boo');
+
+		// all the tracked method and their arguments can be retrieved with getAllMethodCalls()
+		$this->assertEquals(array(
+			'doSomethingStatic' => array(
+				array('foo'),
+				array(),
+				array('baz', 'boo'),
+			),
+		), SomeTestClassStub::getAllStaticMethodCalls());
+
+		// don't forget to reset calls on a static for subsequent tests
+		SomeTestClassStub::flushStatic();
+	}
+
 	function test_WatchableTrait_CanSetResponses()
 	{
 		$instance = new SomeTestClassStub;
@@ -93,17 +115,24 @@ class SomeTestClassStub {
 	// add this trait to set this class up for testing
 	use \UnitTesting\ClassSpy\WatchableTrait;
 
-	function doSomething()
+	public function doSomething()
 	{
 		// this will actuall track the method and its arguments.
 		// Be sure to return its value if you want to mock some return values.
 		return $this->trackMethodCall();
 	}
 
-	function doSomethingElse()
+	public function doSomethingElse()
 	{
 		// we'll just set up another one the same as above for illustration purposes.
 		return $this->trackMethodCall();
 	}
+
+	public static function doSomethingStatic()
+	{
+		// we'll do the same for a static method
+		return self::trackStaticMethodCall();
+	}
 }
+
 ```

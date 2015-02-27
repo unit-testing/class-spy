@@ -3,9 +3,11 @@ use Closure;
 
 trait WatchableTrait {
 
+	protected static $instances;
+
 	protected $watchableCalls = array();
 
-	protected $watcheableResults = array();
+	protected $watchableResults = array();
 
 	public function getAllMethodCalls()
 	{
@@ -35,24 +37,60 @@ trait WatchableTrait {
 
 	public function setMethodResult($method, $result)
 	{
-		$this->watcheableResults[$method] = $result;
+		$this->watchableResults[$method] = $result;
 	}
 
-	protected function trackMethodCall()
+	public function trackMethodCall($function = null, array $args = array())
 	{
-		list(, $call) = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 2);
-		extract($call);
+		if (!$function)
+		{
+			list($function, $args) = self::extractFunctionAndArgs();
+		}
 		if (!isset($this->watchableCalls[$function]))
 		{
 			$this->watchableCalls[$function] = array();
 		}
 		$this->watchableCalls[$function][] = $args;
-		$result = $this->arrayGet($this->watcheableResults, $function);
+		$result = $this->arrayGet($this->watchableResults, $function);
 		if ($result instanceof Closure)
 		{
 			$result = call_user_func_array($result, $args);
 		}
 		return $result;
+	}
+
+	protected static function extractFunctionAndArgs()
+	{
+		list(, , $call) = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 3);
+		return array($call['function'], $call['args']);
+	}
+
+	protected static function resolveInstance()
+	{
+		if (!self::$instances)
+		{
+			self::$instances = new StaticShim;
+		}
+		return self::$instances;
+	}
+
+	protected static function trackStaticMethodCall()
+	{
+		$instances = self::resolveInstance();
+		list($function, $args) = self::extractFunctionAndArgs();
+		return $instances->trackMethodCall($function, $args);
+	}
+
+	public static function flushStatic()
+	{
+		self::$instances = null;
+	}
+
+	public static function __callStatic($method, array $args)
+	{
+		$instances = self::resolveInstance();
+		$method = str_replace('Static', '', $method);
+		return call_user_func_array(array($instances, $method), $args);
 	}
 
 }
