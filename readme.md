@@ -3,8 +3,8 @@
 In some cases, you may want to mock a class's methods without using testing facility like https://github.com/padraic/mockery. This trait will let you do that.
 
 ## Installation ##
-* `composer require --dev unit-testing/class-spy`
-* or in `require-dev` block of `composer.json`, add `"unit-testing/class-spy": "*"` and then run `composer update`
+* `composer require --dev unit-testing/class-spy:dev-master`
+* or in `require-dev` block of `composer.json`, add `"unit-testing/class-spy": "dev-master"` and then run `composer update`
 
 ## Usage ##
 In your phpunit test, you'll create a stub of your class under test. In that stub definition, add `use \UnitTesting\ClassSpy\WatchableTrait;`. Your stub will be extended with the following methods:
